@@ -94,6 +94,51 @@ export default function SettingsModal({ settings, onChange, onClose }: Props): J
             )}
           </section>
 
+          {/* Raccourcis clavier */}
+          <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Raccourcis clavier</span>
+            {[
+              { group: 'Navigation', items: [
+                ['Ctrl+L', 'Barre d\'adresse'],
+                ['Ctrl+R', 'Actualiser'],
+                ['Alt+←', 'Page précédente'],
+                ['Alt+→', 'Page suivante'],
+              ]},
+              { group: 'Onglets', items: [
+                ['Ctrl+T', 'Nouvel onglet'],
+                ['Ctrl+W', 'Fermer l\'onglet'],
+                ['Ctrl+Tab', 'Onglet suivant'],
+                ['Ctrl+Shift+Tab', 'Onglet précédent'],
+              ]},
+              { group: 'Zoom', items: [
+                ['Ctrl++', 'Zoom avant'],
+                ['Ctrl+−', 'Zoom arrière'],
+                ['Ctrl+0', 'Zoom par défaut'],
+              ]},
+              { group: 'Outils', items: [
+                ['Ctrl+F', 'Rechercher dans la page'],
+                ['Ctrl+D', 'Ajouter / retirer des favoris'],
+                ['Ctrl+H', 'Historique'],
+                ['Ctrl+J', 'Téléchargements'],
+                ['Ctrl+Shift+I', 'Outils de développement'],
+              ]},
+            ].map(({ group, items }) => (
+              <div key={group} style={{ background: '#0a0a0a', border: '1px solid #1e1e1e', borderRadius: 10, overflow: 'hidden' }}>
+                <div style={{ padding: '8px 14px', fontSize: 11, fontWeight: 600, color: '#52525b', background: '#0d0d0d', borderBottom: '1px solid #1a1a1a', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{group}</div>
+                {items.map(([key, label]) => (
+                  <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 14px', borderBottom: '1px solid #141414' }}>
+                    <span style={{ fontSize: 12, color: '#a1a1aa' }}>{label}</span>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      {key.split('+').map((k, i) => (
+                        <span key={i} style={{ padding: '2px 7px', borderRadius: 5, background: '#1a1a1a', border: '1px solid #2e2e2e', fontSize: 11, fontFamily: 'monospace', color: '#e4e4e7' }}>{k}</span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </section>
+
           {/* Liste domaines bloqués */}
           {settings.blockedDomains.length > 0 && (
             <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

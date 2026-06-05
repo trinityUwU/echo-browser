@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, type KeyboardEvent } from 'react'
-import { ChevronLeft, ChevronRight, RotateCw, Shield, ShieldOff, X, Settings, Star, Download } from 'lucide-react'
+import { ChevronLeft, ChevronRight, RotateCw, Shield, ShieldOff, X, Settings, Star, Download, Bookmark } from 'lucide-react'
 import ProgressBar from './ProgressBar'
 
 interface Props {
@@ -108,6 +108,14 @@ export default function Toolbar({ url, loading, canGoBack, canGoForward, adBlock
         onMouseEnter={e => { e.currentTarget.style.background = isBookmarked ? 'rgba(251,191,36,0.1)' : '#1e1e1e'; e.currentTarget.style.color = '#fbbf24' }}
         onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = isBookmarked ? '#fbbf24' : '#52525b' }}>
         <Star size={17} fill={isBookmarked ? '#fbbf24' : 'none'} />
+      </button>
+
+      {/* Bookmarks panel */}
+      <button onClick={onOpenBookmarks} title="Favoris"
+        style={{ ...btn, color: '#52525b' }}
+        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(251,191,36,0.1)'; e.currentTarget.style.color = '#fbbf24' }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#52525b' }}>
+        <Bookmark size={17} />
       </button>
 
       {/* Shield (adblock) */}

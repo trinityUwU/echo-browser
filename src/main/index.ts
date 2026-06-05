@@ -211,6 +211,26 @@ function createTab(url = 'https://google.com'): Tab {
     win.webContents.send('find-result', { activeMatch: result.activeMatchOrdinal, total: result.matches })
   })
 
+  view.webContents.on('dom-ready', () => {
+    view.webContents.executeJavaScript(`
+      (() => {
+        try { Object.defineProperty(navigator, 'webdriver', { get: () => undefined, configurable: true }) } catch {}
+        if (!window.chrome) {
+          window.chrome = {
+            app: { isInstalled: false, InstallState: {}, RunningState: {} },
+            runtime: {
+              connect: () => {}, sendMessage: () => {},
+              onMessage: { addListener: () => {}, removeListener: () => {} },
+              onConnect: { addListener: () => {}, removeListener: () => {} },
+            },
+            loadTimes: () => ({}),
+            csi: () => ({}),
+          }
+        }
+      })()
+    `).catch(() => {})
+  })
+
   setupTabShortcuts(view, tab)
   setupContextMenu(view, tab)
   view.webContents.loadURL(url)
@@ -388,6 +408,10 @@ async function createWindow(): Promise<void> {
     switchTab(t.id)
   })
 }
+
+// Disable automation fingerprinting — prevents Google/Gmail "not secure" detection
+app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled')
+app.commandLine.appendSwitch('disable-features', 'AutofillEnableAccountStorage')
 
 app.whenReady().then(createWindow)
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
