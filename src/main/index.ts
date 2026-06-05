@@ -15,9 +15,11 @@ import type { Settings } from './settings'
 const HEADER_HEIGHT = 116
 const FIND_BAR_HEIGHT = 48
 const CHROME_UA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36'
+const BROWSER_PARTITION = 'persist:browser'
 
 let win: BrowserWindow
 let blocker: ElectronBlocker
+let browserSession: Electron.Session
 let adBlockerEnabled = true
 let activeTabId = 0
 let nextId = 1
@@ -157,7 +159,14 @@ function setupContextMenu(view: WebContentsView, tab: Tab): void {
 }
 
 function createTab(url = 'https://google.com'): Tab {
-  const view = new WebContentsView({ webPreferences: { contextIsolation: true, nodeIntegration: false } })
+  const view = new WebContentsView({
+    webPreferences: {
+      contextIsolation: false,
+      nodeIntegration: false,
+      partition: BROWSER_PARTITION,
+      preload: join(__dirname, '../preload/webview.js'),
+    },
+  })
   view.webContents.setUserAgent(CHROME_UA)
 
   const tab: Tab = { id: nextId++, view, title: 'New Tab', url, loading: true, canGoBack: false, canGoForward: false, zoom: 1.0 }
@@ -209,26 +218,6 @@ function createTab(url = 'https://google.com'): Tab {
   })
   view.webContents.on('found-in-page', (_, result) => {
     win.webContents.send('find-result', { activeMatch: result.activeMatchOrdinal, total: result.matches })
-  })
-
-  view.webContents.on('dom-ready', () => {
-    view.webContents.executeJavaScript(`
-      (() => {
-        try { Object.defineProperty(navigator, 'webdriver', { get: () => undefined, configurable: true }) } catch {}
-        if (!window.chrome) {
-          window.chrome = {
-            app: { isInstalled: false, InstallState: {}, RunningState: {} },
-            runtime: {
-              connect: () => {}, sendMessage: () => {},
-              onMessage: { addListener: () => {}, removeListener: () => {} },
-              onConnect: { addListener: () => {}, removeListener: () => {} },
-            },
-            loadTimes: () => ({}),
-            csi: () => ({}),
-          }
-        }
-      })()
-    `).catch(() => {})
   })
 
   setupTabShortcuts(view, tab)
@@ -381,18 +370,20 @@ async function createWindow(): Promise<void> {
     },
   })
 
-  blocker = await createAdBlocker(session.defaultSession)
+  browserSession = session.fromPartition(BROWSER_PARTITION)
+  blocker = await createAdBlocker(browserSession)
 
-  session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+  browserSession.webRequest.onBeforeSendHeaders((details, callback) => {
     const h = { ...details.requestHeaders }
     h['User-Agent'] = CHROME_UA
-    h['sec-ch-ua'] = '"Not A(Brand";v="8", "Chromium";v="133", "Google Chrome";v="133"'
+    h['sec-ch-ua'] = '"Not(A:Brand";v="99", "Google Chrome";v="133", "Chromium";v="133"'
     h['sec-ch-ua-mobile'] = '?0'
     h['sec-ch-ua-platform'] = '"Linux"'
+    delete h['X-Requested-With']
     callback({ requestHeaders: h })
   })
 
-  setupDownloads(session.defaultSession, win)
+  setupDownloads(browserSession, win)
   setupIPC()
 
   if (process.env.NODE_ENV === 'development') {
