@@ -12,12 +12,18 @@ export interface TabInfo {
   loading: boolean
   canGoBack: boolean
   canGoForward: boolean
+  zoom: number
 }
 
 export interface TabsState {
   tabs: TabInfo[]
   activeTabId: number
   adBlockerEnabled: boolean
+}
+
+export interface FindResult {
+  activeMatch: number
+  total: number
 }
 
 declare global {
@@ -31,22 +37,29 @@ declare global {
       closeTab: (id: number) => void
       switchTab: (id: number) => void
       toggleAdBlock: () => void
-      minimize: () => void
-      maximize: () => void
-      closeWindow: () => void
+      zoomIn: () => void
+      zoomOut: () => void
+      zoomReset: () => void
       getState: () => Promise<TabsState>
+      getSettings: () => Promise<Settings>
+      saveSettings: (s: Settings) => void
       reportResize: (w: number, h: number) => void
       viewHide: () => void
       viewShow: () => void
       popupOpen: (url: string) => void
       popupBlock: (url: string) => void
       popupDismiss: () => void
+      findClose: () => void
+      findSearch: (text: string, forward: boolean) => void
+      findNext: (text: string, forward: boolean) => void
+      onTabsUpdate: (cb: (data: TabsState) => void) => () => void
       onPopupConfirm: (cb: (data: { url: string; from: string }) => void) => () => void
-      getSettings: () => Promise<Settings>
-      saveSettings: (s: Settings) => void
+      onFindOpen: (cb: () => void) => () => void
+      onFindForceClose: (cb: () => void) => () => void
+      onFindResult: (cb: (r: FindResult) => void) => () => void
+      onFocusUrlBar: (cb: () => void) => () => void
       onContentFullscreen: (cb: (full: boolean) => void) => () => void
       onSettingsUpdate: (cb: (s: Settings) => void) => () => void
-      onTabsUpdate: (cb: (data: TabsState) => void) => () => void
     }
   }
 }

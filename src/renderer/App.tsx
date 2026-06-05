@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { TabsState, Settings } from '../shared/types'
 import TabBar from './components/TabBar'
 import Toolbar from './components/Toolbar'
+import FindBar from './components/FindBar'
 import PopupModal from './components/PopupModal'
 import SettingsModal from './components/SettingsModal'
 
@@ -15,44 +16,53 @@ export default function App(): JSX.Element {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   const [popup, setPopup] = useState<PopupRequest | null>(null)
   const [showSettings, setShowSettings] = useState(false)
+  const [showFind, setShowFind] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
 
   useEffect(() => {
     window.electron.getState().then(setState)
     window.electron.getSettings().then(setSettings)
 
-    const cleanState = window.electron.onTabsUpdate(setState)
-    const cleanPopup = window.electron.onPopupConfirm(setPopup)
-    const cleanSettings = window.electron.onSettingsUpdate(setSettings)
-    const cleanFs = window.electron.onContentFullscreen(setFullscreen)
+    const cleans = [
+      window.electron.onTabsUpdate(setState),
+      window.electron.onPopupConfirm(setPopup),
+      window.electron.onSettingsUpdate(setSettings),
+      window.electron.onContentFullscreen(setFullscreen),
+      window.electron.onFindOpen(() => setShowFind(true)),
+    ]
 
     const onResize = (): void => window.electron.reportResize(window.innerWidth, window.innerHeight)
     window.addEventListener('resize', onResize)
     onResize()
 
-    return () => {
-      cleanState(); cleanPopup(); cleanSettings(); cleanFs()
-      window.removeEventListener('resize', onResize)
-    }
+    return () => { cleans.forEach(c => c()); window.removeEventListener('resize', onResize) }
   }, [])
 
   const activeTab = state.tabs.find(t => t.id === state.activeTabId)
 
+  function closeFind(): void {
+    setShowFind(false)
+    window.electron.findClose()
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#0a0a0a' }}>
-      <div style={{ flexShrink: 0, overflow: 'hidden', height: fullscreen ? 0 : 'auto', transition: 'height 0.15s ease' }}>
-        <TabBar tabs={state.tabs} activeTabId={state.activeTabId} />
-      </div>
-      <div style={{ flexShrink: 0, overflow: 'hidden', height: fullscreen ? 0 : 'auto', transition: 'height 0.15s ease' }}>
-      <Toolbar
-        url={activeTab?.url ?? ''}
-        loading={activeTab?.loading ?? false}
-        canGoBack={activeTab?.canGoBack ?? false}
-        canGoForward={activeTab?.canGoForward ?? false}
-        adBlockerEnabled={state.adBlockerEnabled}
-        onOpenSettings={() => { window.electron.viewHide(); setShowSettings(true) }}
-      />
-      </div>
+      {!fullscreen && (
+        <>
+          <TabBar tabs={state.tabs} activeTabId={state.activeTabId} />
+          <Toolbar
+            url={activeTab?.url ?? ''}
+            loading={activeTab?.loading ?? false}
+            canGoBack={activeTab?.canGoBack ?? false}
+            canGoForward={activeTab?.canGoForward ?? false}
+            adBlockerEnabled={state.adBlockerEnabled}
+            zoom={activeTab?.zoom ?? 1.0}
+            onOpenSettings={() => { window.electron.viewHide(); setShowSettings(true) }}
+          />
+          {showFind && <FindBar onClose={closeFind} />}
+        </>
+      )}
+
       {popup && (
         <PopupModal
           url={popup.url}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, type KeyboardEvent } from 'react'
 import { ChevronLeft, ChevronRight, RotateCw, Shield, ShieldOff, X, Settings } from 'lucide-react'
+import ProgressBar from './ProgressBar'
 
 interface Props {
   url: string
@@ -7,6 +8,7 @@ interface Props {
   canGoBack: boolean
   canGoForward: boolean
   adBlockerEnabled: boolean
+  zoom: number
   onOpenSettings: () => void
 }
 
@@ -24,14 +26,20 @@ const btn: React.CSSProperties = {
   transition: 'background 0.15s, color 0.15s',
 }
 
-export default function Toolbar({ url, loading, canGoBack, canGoForward, adBlockerEnabled, onOpenSettings }: Props): JSX.Element {
+export default function Toolbar({ url, loading, canGoBack, canGoForward, adBlockerEnabled, zoom, onOpenSettings }: Props): JSX.Element {
   const [input, setInput] = useState(url)
   const [focused, setFocused] = useState(false)
   const ref = useRef<HTMLInputElement>(null)
 
+  useEffect(() => { if (!focused) setInput(url) }, [url, focused])
+
   useEffect(() => {
-    if (!focused) setInput(url)
-  }, [url, focused])
+    const clean = window.electron.onFocusUrlBar(() => {
+      ref.current?.focus()
+      ref.current?.select()
+    })
+    return clean
+  }, [])
 
   function onKeyDown(e: KeyboardEvent<HTMLInputElement>): void {
     if (e.key === 'Enter') { ref.current?.blur(); window.electron.navigate(normalizeUrl(input)) }
@@ -47,13 +55,11 @@ export default function Toolbar({ url, loading, canGoBack, canGoForward, adBlock
     e.currentTarget.style.color = disabled ? 'rgba(161,161,170,0.25)' : '#a1a1aa'
   }
 
+  const zoomPct = Math.round(zoom * 100)
+  const showZoom = zoomPct !== 100
+
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center',
-      height: 60, padding: '0 32px', gap: 12,
-      background: '#0f0f0f',
-      borderBottom: '1px solid #1e1e1e',
-    }}>
+    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 60, padding: '0 32px', gap: 12, background: '#0f0f0f', borderBottom: '1px solid #1e1e1e' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         <button
           disabled={!canGoBack}
@@ -83,32 +89,46 @@ export default function Toolbar({ url, loading, canGoBack, canGoForward, adBlock
         </button>
       </div>
 
-      <input
-        ref={ref}
-        value={input}
-        onChange={e => setInput(e.target.value)}
-        onFocus={() => { setFocused(true); ref.current?.select() }}
-        onBlur={() => setFocused(false)}
-        onKeyDown={onKeyDown}
-        style={{
-          flex: 1, height: 40, padding: '0 20px',
-          borderRadius: 20, background: '#1a1a1a',
-          border: focused ? '1px solid #444' : '1px solid #2e2e2e',
-          color: '#e4e4e7', fontSize: 14, outline: 'none',
-          transition: 'border-color 0.15s',
-          userSelect: 'text',
-        }}
-        placeholder="Search or enter URL..."
-        spellCheck={false}
-      />
+      <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
+        <input
+          ref={ref}
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onFocus={() => { setFocused(true); ref.current?.select() }}
+          onBlur={() => setFocused(false)}
+          onKeyDown={onKeyDown}
+          style={{
+            width: '100%', height: 40, padding: showZoom ? '0 64px 0 20px' : '0 20px',
+            borderRadius: 20, background: '#1a1a1a',
+            border: focused ? '1px solid #444' : '1px solid #2e2e2e',
+            color: '#e4e4e7', fontSize: 14, outline: 'none',
+            transition: 'border-color 0.15s',
+          }}
+          placeholder="Rechercher ou saisir une URL…"
+          spellCheck={false}
+        />
+        {showZoom && (
+          <button
+            onClick={() => window.electron.zoomReset()}
+            title="Cliquer pour réinitialiser le zoom"
+            style={{
+              position: 'absolute', right: 10,
+              padding: '2px 8px', borderRadius: 6, border: '1px solid #2e2e2e',
+              background: 'transparent', color: '#71717a', fontSize: 11,
+              cursor: 'pointer', transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#1e1e1e'; e.currentTarget.style.color = '#a1a1aa' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#71717a' }}
+          >
+            {zoomPct}%
+          </button>
+        )}
+      </div>
 
       <button
         onClick={() => window.electron.toggleAdBlock()}
-        title={adBlockerEnabled ? 'Ad blocking ON' : 'Ad blocking OFF'}
-        style={{
-          ...btn,
-          color: adBlockerEnabled ? '#34d399' : '#52525b',
-        }}
+        title={adBlockerEnabled ? 'Blocage pub actif' : 'Blocage pub désactivé'}
+        style={{ ...btn, color: adBlockerEnabled ? '#34d399' : '#52525b' }}
         onMouseEnter={e => {
           e.currentTarget.style.background = adBlockerEnabled ? 'rgba(6,78,59,0.4)' : '#1e1e1e'
           e.currentTarget.style.color = adBlockerEnabled ? '#34d399' : '#a1a1aa'
@@ -130,6 +150,8 @@ export default function Toolbar({ url, loading, canGoBack, canGoForward, adBlock
       >
         <Settings size={18} />
       </button>
+
+      <ProgressBar loading={loading} />
     </div>
   )
 }
