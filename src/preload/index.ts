@@ -1,16 +1,15 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { TabsState, Settings, FindResult } from '../shared/types'
+import type { TabsState, Settings, FindResult, Bookmark, HistoryEntry, StoredDownload, ActiveDownload } from '../shared/types'
 
-function on<T>(channel: string, cb: (data: T) => void): () => void {
+function on<T>(ch: string, cb: (d: T) => void): () => void {
   const h = (_: unknown, d: T) => cb(d)
-  ipcRenderer.on(channel, h)
-  return () => ipcRenderer.removeListener(channel, h)
+  ipcRenderer.on(ch, h)
+  return () => ipcRenderer.removeListener(ch, h)
 }
-
-function onVoid(channel: string, cb: () => void): () => void {
+function onVoid(ch: string, cb: () => void): () => void {
   const h = () => cb()
-  ipcRenderer.on(channel, h)
-  return () => ipcRenderer.removeListener(channel, h)
+  ipcRenderer.on(ch, h)
+  return () => ipcRenderer.removeListener(ch, h)
 }
 
 contextBridge.exposeInMainWorld('electron', {
@@ -34,15 +33,28 @@ contextBridge.exposeInMainWorld('electron', {
   findClose: () => ipcRenderer.send('find-close'),
   findSearch: (text: string, forward: boolean) => ipcRenderer.send('find-search', { text, forward }),
   findNext: (text: string, forward: boolean) => ipcRenderer.send('find-next', { text, forward }),
+  bookmarkToggle: () => ipcRenderer.send('bookmark-toggle'),
+  bookmarkList: (): Promise<Bookmark[]> => ipcRenderer.invoke('bookmark-list'),
+  bookmarkDelete: (url: string) => ipcRenderer.send('bookmark-delete', url),
+  historyList: (limit?: number, search?: string): Promise<HistoryEntry[]> => ipcRenderer.invoke('history-list', limit, search),
+  historyDelete: (id: number) => ipcRenderer.send('history-delete', id),
+  historyClear: () => ipcRenderer.send('history-clear'),
+  downloadCancel: (id: number) => ipcRenderer.send('download-cancel', id),
+  downloadOpen: (path: string) => ipcRenderer.send('download-open', path),
+  downloadShowFolder: (path: string) => ipcRenderer.send('download-show-folder', path),
+  downloadListStored: (): Promise<StoredDownload[]> => ipcRenderer.invoke('download-list-stored'),
   getState: (): Promise<TabsState> => ipcRenderer.invoke('get-state'),
   getSettings: (): Promise<Settings> => ipcRenderer.invoke('get-settings'),
   saveSettings: (s: Settings) => ipcRenderer.send('save-settings', s),
-  onTabsUpdate: (cb: (data: TabsState) => void) => on('tabs-update', cb),
-  onPopupConfirm: (cb: (data: { url: string; from: string }) => void) => on('popup-confirm', cb),
+  onTabsUpdate: (cb: (d: TabsState) => void) => on('tabs-update', cb),
+  onDownloadsUpdate: (cb: (d: ActiveDownload[]) => void) => on('downloads-update', cb),
+  onPopupConfirm: (cb: (d: { url: string; from: string }) => void) => on('popup-confirm', cb),
   onFindOpen: (cb: () => void) => onVoid('find-open', cb),
   onFindForceClose: (cb: () => void) => onVoid('find-force-close', cb),
   onFindResult: (cb: (r: FindResult) => void) => on('find-result', cb),
   onFocusUrlBar: (cb: () => void) => onVoid('focus-url-bar', cb),
-  onContentFullscreen: (cb: (full: boolean) => void) => on('content-fullscreen', cb),
+  onContentFullscreen: (cb: (v: boolean) => void) => on('content-fullscreen', cb),
   onSettingsUpdate: (cb: (s: Settings) => void) => on('settings-update', cb),
+  onOpenHistory: (cb: () => void) => onVoid('open-history', cb),
+  onOpenDownloads: (cb: () => void) => onVoid('open-downloads', cb),
 })
